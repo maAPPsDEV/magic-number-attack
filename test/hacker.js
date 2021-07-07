@@ -42,7 +42,7 @@ contract("Hacker", function ([_owner, _hacker]) {
     });
   });
 
-  context("using memory slot on free memory pointer - 0x40", function () {
+  context("using memory slot on free memory pointer - 0x40, and 12 bytes initialization opcodes", function () {
     const slot = "40";
 
     it("should deploy hacker contract with bytecodes", async function () {
@@ -50,7 +50,7 @@ contract("Hacker", function ([_owner, _hacker]) {
       const result = await web3.eth.sendTransaction({
         from: _hacker,
         data:
-          "0x600a80600b6000396000f3" + // initialization opcodes
+          "0x600a600c600039600a6000f3" + // initialization opcodes
           `602a60${slot}52602060${slot}f3`, // runtime opcodes
       });
       const address = result.contractAddress;

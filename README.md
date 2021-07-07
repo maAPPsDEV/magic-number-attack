@@ -272,7 +272,7 @@ Compiling your contracts...
     using memory slot on scratch space - 0x00
       √ should deploy hacker contract with bytecodes (140ms)
       √ should answer magic number (81ms)
-    using memory slot on free memory pointer - 0x40
+    using memory slot on free memory pointer - 0x40, and 12 bytes initialization opcodes
       √ should deploy hacker contract with bytecodes (119ms)
       √ should answer magic number (94ms)
     using memory slot on zero slot - 0x60
