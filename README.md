@@ -190,7 +190,7 @@ a164736f6c6343000806000a
 Remember what you've learnd above:
 `a264` is the encode for ipfs hash. `a164` looks similar, so I tried to covert hex `736f6c6343000806000a` to ascii, as a result: `solcC` 😲, yes, here is the catch!!!
 
-You will never find the answer in the formal documents.
+`>>>` **You will never find the answer in the formal documents.** `<<<`
 
 But if you try to read [solc](https://github.com/ethereum/solidity) release notes...
 
@@ -198,7 +198,7 @@ Finally, see the answer at version [0.5.9](https://github.com/ethereum/solidity/
 
 > Assembler: Encode the compiler version in the deployed bytecode.
 
-(It was midnight already, when I've found that answer eventually. 🥱)
+(_It was midnight already, when I've found that answer eventually._ 🥱)
 
 ## Source Code
 
