@@ -57,12 +57,14 @@ You can see Opcodes reference [here](https://ethervm.io/)
 First, let’s figure out the `runtime code` logic. The level constrains you to only 10 opcodes. Luckily, it doesn’t take more than that to return a simple `0x42`.
 
 **Returning values** is handled by the `RETURN` opcode, which takes in two arguments:
+
 - `p`: the position where your value is stored in memory, i.e. 0x0, 0x40, 0x50. Let’s arbitrarily pick the 0x80 slot.
 - `s`: the size of your stored data. _Recall your value is 32 bytes long (or 0x20 in hex)._
 
 But… this means before you can return a value, first you have to store it in memory.
 
 1. First, store your `0x42` value in memory with `mstore(p, v)`, where `p` is position and `v` is the value in hexadecimal:
+
 ```
 6042    // v: push1 0x42 (value is 0x42)
 6080    // p: push1 0x80 (memory slot is 0x80)
@@ -70,6 +72,7 @@ But… this means before you can return a value, first you have to store it in m
 ```
 
 2. Then, you can `return` this the `0x42` value:
+
 ```
 6020    // s: push1 0x20 (value is 32 bytes in size)
 6080    // p: push1 0x80 (value was stored in slot 0x80)
@@ -79,50 +82,64 @@ f3      // return
 This resulting opcode sequence should be `604260805260206080f3`. Your runtime opcode is exactly 10 opcodes and 10 bytes long.
 
 ### Initialization Opcodes — Part 2
+
 Now let’s create the contract `initialization opcodes`. These opcodes need to replicate your `runtime opcodes` to memory, before returning them to the EVM. _Recall that the EVM will then automatically save the runtime sequence `604260805260206080f3` to the blockchain — you won’t have to handle this last part._
 
 **Copying code** from one place to another is handled by the opcode `codecopy`, which takes in 3 arguments:
+
 - `t`: the destination position of the code, in memory. _Let’s arbitrarily save the code to the 0x00 position._
 - `f`: the current position of the `runtime opcodes`, in reference to the entire bytecode. Remember that `f` starts after `initialization opcodes` end. _What a chicken and egg problem! This value is currently unknown to you._
 - `s`: size of the code, in bytes. _Recall that `604260805260206080f3` is 10 bytes long (or 0x0a in hex)._
+
 3. First copy your `runtime opcodes` into memory. Add a placeholder for `f`, as it is currently unknown:
+
 ```
 600a    // s: push1 0x0a (10 bytes)
 60??    // f: push1 0x?? (current position of runtime opcodes)
 6000    // t: push1 0x00 (destination memory index 0)
 39      // CODECOPY
 ```
+
 4. Then, `return` your in-memory `runtime opcodes` to the EVM:
+
 ```
 600a    // s: push1 0x0a (runtime opcode length)
 6000    // p: push1 0x00 (access memory index 0)
 f3      // return to EVM
 ```
+
 5. Notice that in total, your `initialization opcodes` take up 12 bytes, or `0x0c` spaces. This means your `runtime opcodes` will start at index `0x0c`, where `f` is now known to be `0x0c`:
+
 ```
 600a    // s: push1 0x0a (10 bytes)
 600c    // f: push1 0x?? (current position of runtime opcodes)
 6000    // t: push1 0x00 (destination memory index 0)
 39      // CODECOPY
 ```
+
 6. The final sequence is thus:
+
 ```
 0x600a600c600039600a6000f3604260805260206080f3
 ```
-Where the first 12 bytes are `initialization opcodes` and the subsequent 10 bytes are your `runtime opcodes`.
-7. In Truffle console, create your contract with the following commands:
+
+Where the first 12 bytes are `initialization opcodes` and the subsequent 10 bytes are your `runtime opcodes`. 7. In Truffle console, create your contract with the following commands:
+
 ```
 > var account = "your address here";
 > var bytecode = "0x600a600c600039600a6000f3604260805260206080f3";
 > web3.eth.sendTransaction({ from: account, data: bytecode }, function(err,res){console.log(res)});
 ```
+
 8. Look up the newly created **contract address** from the returned transaction hash. You can do this via Etherscan or via getTransactionReceipt(hash).
 9. In the console, simply input the following to pass the game:
+
 ```
 await contract.setSolver("contract address");
 ```
 
 **UPDATE**: `initialization opcodes` can be optimized as 11 bytes, and this is in reality what solc actually compile.
+
 ```
 PUSH1 0A DUP1 PUSH1 0B PUSH1 00 CODECOPY PUSH1 00 RETURN
 600a80600b6000396000f3
@@ -138,11 +155,12 @@ If you compile an empty contract, you will notice that there are some strange/un
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.5 <0.9.0;
 
-contract Hacker {
-}
+contract Hacker {}
 
 ```
+
 Runtime Bytecodes:
+
 ```
 PUSH1 0x80 PUSH1 0x40 MSTORE PUSH1 0x0 DUP1 REVERT INVALID LOG2 PUSH5 0x6970667358 0x22 SLT KECCAK256 PUSH30 0x828A0559B3E8FD79CC9E07CA40D03884B9D38AAA92A87B3A614E0D08E4FC SWAP2 PUSH5 0x736F6C6343 STOP ADDMOD MOD STOP CALLER
 ```
@@ -188,26 +206,28 @@ Finally, see the answer at version [0.5.9](https://github.com/ethereum/solidity/
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
+pragma solidity >=0.4.22 <0.9.0;
 
-contract Token {
-  mapping(address => uint256) balances;
-  uint256 public totalSupply;
+contract MagicNum {
+  address public solver;
 
-  constructor(uint256 _initialSupply) public {
-    balances[msg.sender] = totalSupply = _initialSupply;
+  constructor() public {}
+
+  function setSolver(address _solver) public {
+    solver = _solver;
   }
 
-  function transfer(address _to, uint256 _value) public returns (bool) {
-    require(balances[msg.sender] - _value >= 0);
-    balances[msg.sender] -= _value;
-    balances[_to] += _value;
-    return true;
-  }
-
-  function balanceOf(address _owner) public view returns (uint256 balance) {
-    return balances[_owner];
-  }
+  /*
+    ____________/\\\_______/\\\\\\\\\_____        
+     __________/\\\\\_____/\\\///////\\\___       
+      ________/\\\/\\\____\///______\//\\\__      
+       ______/\\\/\/\\\______________/\\\/___     
+        ____/\\\/__\/\\\___________/\\\//_____    
+         __/\\\\\\\\\\\\\\\\_____/\\\//________   
+          _\///////////\\\//____/\\\/___________  
+           ___________\/\\\_____/\\\\\\\\\\\\\\\_ 
+            ___________\///_____\///////////////__
+  */
 }
 
 ```
@@ -249,9 +269,20 @@ Compiling your contracts...
 
 
   Contract: Hacker
-    √ should steal countless of tokens (377ms)
+    using memory slot on scratch space - 0x00
+      √ should deploy hacker contract with bytecodes (140ms)
+      √ should answer magic number (81ms)
+    using memory slot on free memory pointer - 0x40
+      √ should deploy hacker contract with bytecodes (119ms)
+      √ should answer magic number (94ms)
+    using memory slot on zero slot - 0x60
+      √ should deploy hacker contract with bytecodes (158ms)
+      √ should answer magic number (53ms)
+    using memory slot on free memory area - 0x80
+      √ should deploy hacker contract with bytecodes (140ms)
+      √ should answer magic number (56ms)
 
 
-  1 passing (440ms)
+  8 passing (952ms)
 
 ```
